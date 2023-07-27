@@ -3,9 +3,16 @@ package org.spiderflow.core.utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.servlet.http.HttpServletRequest;
 import java.io.*;
 import java.net.*;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 
 /**
  * 文件处理工具类
@@ -178,7 +185,7 @@ public class FileUtils
 
     public static DownloadStatus downloadFile(String savePath, String fileUrl, boolean downNew) {
         URL urlfile = null;
-        HttpURLConnection httpUrl = null;
+        HttpsURLConnection httpUrl = null;
         BufferedInputStream bis = null;
         BufferedOutputStream bos = null;
         if (fileUrl.startsWith("//")) {
@@ -207,7 +214,9 @@ public class FileUtils
             }
         }
         try {
-            httpUrl = (HttpURLConnection) urlfile.openConnection();
+            trustAllHttpsCertificates();
+
+            httpUrl = (HttpsURLConnection) urlfile.openConnection();
             httpUrl.setRequestProperty("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:68.0) Gecko/20100101 Firefox/68.0");
             //读取超时时间
             httpUrl.setReadTimeout(60000);
@@ -246,4 +255,25 @@ public class FileUtils
             }
         }
     }
+
+    private static TrustManager[] trustAllCerts = new TrustManager[]{
+            new X509TrustManager() {
+                public X509Certificate[] getAcceptedIssuers() {
+                    return null;
+                }
+
+                public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                }
+
+                public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                }
+            }
+    };
+
+    private static void trustAllHttpsCertificates() throws NoSuchAlgorithmException, KeyManagementException {
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+        HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
+    };
 }
